@@ -8,38 +8,70 @@
 student_no = 'A0105505U' 
 
 from itertools import chain, combinations
+from collections import defaultdict
 
-def get_derived_attributes(S, F):
+def get_derived_attributes(S, fds):
 	derived_attr = set()
 	input_attr = set(S)
-	for fd in F:
-		if set(fd[0]) == input_attr:
+	for fd in fds:
+		if fd[0] == input_attr:
 			derived_attr.update(fd[1])
-			F.remove(fd)
-	return derived_attr, F
+			fds.remove(fd)
+	return derived_attr, fds
 
 def all_subsets(S):
 	return chain.from_iterable(combinations(S, r) for r in range(len(S)+1))
+
+# remove trival fds
+def reduce_fds(F):
+	fds = []
+	for fd in F:
+		left = set(fd[0])
+		right = set(fd[1])
+		interc = left.intersection(right)
+		if interc != right:
+			fds.append([left-interc, right-interc])
+	return fds
 
 ## Determine the closure of set of attribute S given the schema R and functional dependency F
 def closure(R, F, S):
 	# initialize the closure as S
 	closure = set()
 	closure.update(S)
-	fds = F[:]
-	print "closure: ", closure
+	fds = reduce_fds(F)
 	while True:
 		subsets = all_subsets(closure)
 		closure_len_prev = len(closure)
 		for subset in subsets:
-			if len(subset) > 0 and len(F) > 0:
+			if len(F) > 0:
 				derived_attr, fds = get_derived_attributes(subset, fds)
-				print "derived: ", derived_attr
 				closure.update(derived_attr)
 		if len(closure) == closure_len_prev:
 			break
-	print "closure: ", sorted(closure)
 	return sorted(closure)
+
+def is_super_key(key, candidate_keys):
+	for current_key in candidate_keys:
+		if key >= current_key:
+			return True
+	return False
+
+## Determine the all the attribute closure excluding superkeys that are not candidate keys given the schema R and functional dependency F
+def all_closures(R, F): 
+	schema = set(R)
+	all_closures = []
+	keys = []
+	for subset in all_subsets(R):
+		if len(subset) > 0:
+			subset_closure = closure(R, F, subset)
+			if set(subset_closure) == schema:
+				if not is_super_key(subset, keys):
+					keys.append(subset)
+					all_closures.append([sorted(subset), subset_closure])
+			else:
+				all_closures.append([sorted(subset), subset_closure])
+	print all_closures
+	return all_closures
 
 ## Return the candidate keys of a given schema R and functional dependencies F.
 ## NOTE: This function is not graded for CS5421 students.
@@ -55,39 +87,39 @@ def candidate_keys(R, F):
 	ALL = L.union(RR)
 	L = L - M
 	RR = RR - M
-	print "L: ", L
-	print "RR: ", RR
-	print "M: ", M
-
 
 	# initalized candidate key as left side only attributes and missing attribute
 	K = L.union(Schema-ALL)
-	print "K: ", K
 	for subset in all_subsets(M):
-		print "subset: ", subset
 		key = K.union(subset)
 		# skip for super key
-		is_super_key = False
-		for current_key in keys:
-			if key >= set(current_key):
-				is_super_key = True
-				break
-
-		print "key: ", key
-		if not is_super_key and set(closure(R, F, key)) == Schema:
+		if not is_super_key(key, keys) and set(closure(R, F, key)) == Schema:
 			keys.append(sorted(key))
+	return keys
 
-
-	print "keys: ", keys
-	return []
-
-## Determine the all the attribute closure excluding superkeys that are not candidate keys given the schema R and functional dependency F
-def all_closures(R, F): 
-    return []
+# input is list of fds, left and right side are set
+def union_fds(fds):
+	unioned_fds = []
+	fd_dict = defaultdict(set)
+	for fd in fds:
+		fd_dict[frozenset(fd[0])]=fd_dict[frozenset(fd[0])].union(fd[1])
+	for fd in fd_dict.items():
+		unioned_fds.append([set(fd[0]),fd[1]])
+	return unioned_fds
     
 ## Return a minimal cover of the functional dependencies of a given schema R and functional dependencies F.
 def min_cover(R, FD): 
-    return []
+	# reference: https://www.inf.usi.ch/faculty/soule/teaching/2014-spring/cover.pdf
+	fds = reduce_fds(FD)
+	print "fds: ", fds
+	# union simplificaiton
+	unioned_fds = union_fds(fds)
+
+	# simplify left side
+
+
+	# simplify right side
+	return []
 
 ## Return all minimal covers reachable from the functional dependencies of a given schema R and functional dependencies F.
 ## NOTE: This function is not graded for CS4221 students.
@@ -114,15 +146,14 @@ print min_cover(R, FD)
 
 R = ['A', 'B', 'C']
 FD = [[['A', 'B'], ['C']],[['A'], ['B']], [['B'], ['A']]] 
-print min_covers(R, FD) 
-print all_min_covers(R, FD) 
+# print min_covers(R, FD) 
+# print all_min_covers(R, FD) 
 
 ## Tutorial questions
 R = ['A', 'B', 'C', 'D', 'E']
 FD = [[['A', 'B'],['C']], [['D'],['D', 'B']], [['B'],['E']], [['E'],['D']], [['A', 'B', 'D'],['A', 'B', 'C', 'D']]]
 
-print closure(R, FD, ['A', 'E'])
 # print candidate_keys(R, FD)
 print min_cover(R, FD)
-print min_covers(R, FD)
-print all_min_covers(R, FD) 
+# print min_covers(R, FD)
+# print all_min_covers(R, FD) 
