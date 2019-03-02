@@ -1,3 +1,5 @@
+# coding: utf-8
+# Your code here!
 ############################################################
 ## project2.py - Code template for Project 2 - Normalization 
 ## Both for CS5421 and CS4221 students 
@@ -8,7 +10,7 @@
 student_no = 'A0105505U' 
 
 from itertools import chain, combinations, permutations, product
-from collections import defaultdict
+from collections import defaultdict, deque
 
 def get_derived_attributes(S, fds):
 	derived_attr = set()
@@ -42,17 +44,15 @@ def closure(R, F, S):
 	# initialize the closure as S
 	closure = set()
 	closure.update(S)
-	fds = reduce_fds(F)
 	while True:
-		subsets = all_subsets(closure)
-		closure_len_prev = len(closure)
-		for subset in subsets:
-			if len(F) > 0:
-				derived_attr, fds = get_derived_attributes(subset, fds)
-				closure.update(derived_attr)
-		if len(closure) == closure_len_prev:
+		updated = False
+		for fd in F:
+			if closure >= set(fd[0]) and not closure.issuperset(set(fd[1])):
+				closure.update(set(fd[1]))
+				updated = True
+		if not updated:
 			break
-	return sorted(closure)
+	return list(closure)
 
 def is_super_key(key, candidate_keys):
 	for current_key in candidate_keys:
@@ -93,20 +93,19 @@ def rhs_to_singlton(fds):
 			new_fds.append([fd[0], set([attr])])
 	return new_fds
 
-def all_closures_to_dict(all_closures):
-	all_closure_dict = {}
-	for attr_closure in all_closures:
-		all_closure_dict[frozenset(attr_closure[0])] = set(attr_closure[1])
-	return all_closure_dict
-
 def covers_original_fds(original_fds, fds):
 	for original_fd in original_fds:
 		if not set(closure([],fds,original_fd[0])).issuperset(original_fd[1]):
 			return False
 	return True
-
-def is_reachable(fds, attrs_left, attrs_right):
-	return closure([], fds, attrs_left) > set(attrs_right)
+	
+def is_min_cover(fds):
+    for fd in fds:
+        new_fds = fds[:]
+        new_fds.remove(fd)
+        if set(closure([], new_fds, fd[0])).issuperset(fd[1]):
+            return False
+    return True
 
 def is_subset_a_key(fds, subset, target_set):
 	return set(closure([], fds, subset)) >= target_set
@@ -118,6 +117,27 @@ def lhs_reduced_subsets(fds, attr_list):
 		if not is_super_key(subset, result) and is_subset_a_key(fds, subset, target_set):
 			result.append(subset)
 	return result
+
+def serialize_fd(fd):
+    return ','.join(sorted(fd[0]))+'-'+','.join(sorted(fd[1]))
+
+def serialize_fds(fds):
+    serialized_fds = []
+    for fd in fds:
+        serialized_fds.append(serialize_fd(fd))
+    return serialized_fds
+    
+def de_serialize_fd(fd):
+    left = set(serialized_fd.split('-')[0].split(','))
+    right = set(serialized_fd.split('-')[1].split(','))
+    return [left, right]
+    
+def de_serialize_fds(fds):
+    result = []
+    for fd in fds:
+        result.append(de_serialize_fd(fd))
+    return result
+    
     
 ## Return a minimal cover of the functional dependencies of a given schema R and functional dependencies F.
 def min_cover(R, FD): 
@@ -144,31 +164,52 @@ def min_cover(R, FD):
 ## NOTE: This function is not graded for CS4221 students.
 def min_covers(R, FD):
 	# remove all trivial dependencies 
+	print 'reduce fds'
 	fds = reduce_fds(FD)
 	# transform to singltons
+	print 'rhs_to_singlton'
 	fds = rhs_to_singlton(fds)
 	# reduce left side
+	print 'reduce lhs'
 	lhs_reduced_serialized_fds = set()
+	lhs_reduced_fds = []
 	for fd in fds:
 		left_serialized_options = set()
 		lhs_subsets = lhs_reduced_subsets(fds, list(fd[0]))
 		for left in lhs_subsets:
-			lhs_reduced_serialized_fds.add(','.join(sorted(left))+'-'+','.join(sorted(fd[1])))
-	
+		    new_fd = [left, fd[1]]
+		    serialized_fd = serialize_fd(new_fd)
+		    if serialized_fd not in lhs_reduced_serialized_fds:
+			    lhs_reduced_serialized_fds.add(serialized_fd)
+			    lhs_reduced_fds.append(new_fd)
 	print lhs_reduced_serialized_fds
+	print lhs_reduced_fds
 
+	print 'run bfs to generage min covers'
+	# get all minial covers uding bfs
+	q = deque([lhs_reduced_fds])
+	visited = set()
 	all_min_covers = []
-	for serialized_cover in all_subsets(lhs_reduced_serialized_fds):
-		# print serialized_cover
-		cover = []
-		for serialized_fd in serialized_cover:
-			left = set(serialized_fd.split('-')[0].split(','))
-			right = set(serialized_fd.split('-')[1].split(','))
-			cover.append([left, right]) 
-		print 'all_min_covers', all_min_covers
-		if not is_super_key(serialized_cover, all_min_covers) and covers_original_fds(fds, cover):
-			all_min_covers.append(serialized_cover)
-	print all_min_covers
+	
+	while len(q) > 0:
+		cover = q.popleft()
+		# check if this cover is a mininum cover
+		serialized_cover = frozenset(serialize_fds(cover))
+		if serialized_cover in visited:
+			continue
+		can_be_reduce = False
+		for fd in cover:
+			reduced_cover = cover[:]
+			reduced_cover.remove(fd)
+			if set(closure([], reduced_cover, fd[0])) >= fd[1] and frozenset(serialize_fds(reduced_cover)) not in visited:
+				can_be_reduce = True
+				q.append(reduced_cover)
+		if not can_be_reduce and serialized_cover not in visited:
+			all_min_covers.append(cover)
+		visited.add(serialized_cover)
+
+	for cover in all_min_covers:
+		print cover
 	return []
 
 def all_fds(all_closures):
@@ -189,17 +230,25 @@ def all_fds(all_closures):
 
 def reduce_closures(all_closures):
 	closures = []
-	length = len(all_closures)
+	# remove closure that left == right
+	print all_closures
+	for closure in all_closures:
+		if not set(closure[0]) == set(closure[1]):
+			closures.append([closure[0], list(set(closure[1])-set(closure[0]))])
+	print closures
+	# remove closure that left-hand side is a superset of another equality left-hand-side and its right-hand side is a subset of the right-hand side
+	reduced_closures = []
+	length = len(closures)
 	for i in range(length):
 		remove = False
-		closure_i = all_closures[i]
+		closure_i = closures[i]
 		for j in range(length):
-			closure_j = all_closures[j]
-			if i!=j and set(closure_i[0]).issuperset(set(closure_j[0])) and set(closure_i[0]).issubset(set(closure_j[1])):
+			closure_j = closures[j]
+			if i!=j and set(closure_i[0]).issuperset(set(closure_j[0])) and set(closure_i[1]).issubset(set(closure_j[1])):
 				remove = True
-		if not remove and set(closure_i[0]) < set(closure_i[1]) :
-			closures.append([closure_i[0], list(set(closure_i[1])-set(closure_i[0]))])
-	return closures
+		if not remove:
+			reduced_closures.append(closure_i)
+	return reduced_closures
 
 
 ## Return all minimal covers of a given schema R and functional dependencies F.
@@ -207,8 +256,11 @@ def reduce_closures(all_closures):
 def all_min_covers(R, FD):
 	my_all_closures = all_closures(R, FD)
 	my_reduced_closures = reduce_closures(my_all_closures)
+	print 'reduced closures', my_reduced_closures
+	print '==========================='
 	my_all_fds = all_fds(my_reduced_closures)
-	# print my_all_fds
+	print 'my_all_fds', my_all_fds
+	print len(my_all_fds)
 	min_covers(R, my_all_fds)
 	return []
 
@@ -241,10 +293,14 @@ FD = [[['A', 'B'],['C']], [['A'],['B']], [['D'],['D', 'B']], [['B'],['E']], [['E
 
 R = ['A', 'B', 'C', 'D', 'E']
 FD = [[['A', 'B'],['C']], [['D'],['D', 'B']], [['B'],['E']], [['E'],['D']], [['A', 'B', 'D'],['A', 'B', 'C', 'D']]]
+# print closure(R, FD, ['B'])
 # print all_closures(R, FD)
 # print candidate_keys(R, FD)
-# print min_covers(R, FD)
-print all_min_covers(R, FD) 
+print all_min_covers(R, FD)
+# print min_covers(R, FD) 
+
+
+
 
 
 
