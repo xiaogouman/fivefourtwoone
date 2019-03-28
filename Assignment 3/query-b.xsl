@@ -15,7 +15,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 							<li>item: <xsl:value-of select="name"/>, qty: <xsl:value-of select="qty"/></li>
 						</xsl:if>
 					</xsl:for-each>
-				</liul>
+				</ul>
 				</li>
 			</xsl:if>
 		</xsl:for-each>
