@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<?xml-stylesheet type="text/xsl" href="query-1.xsl"?>
+<?xml-stylesheet type="text/xsl" href="query-a.xsl"?>
 <!DOCTYPE warehouses [
 <!ELEMENT warehouses (warehouse)*>
 <!ELEMENT warehouse (id,name,address,items)>
 <!ELEMENT address (street,city,country)>
-<!ELEMENT items (item)*>
+<!ELEMENT items (item)+>
 <!ELEMENT street (#PCDATA)>
 <!ELEMENT city (#PCDATA)>
 <!ELEMENT country (#PCDATA)>
