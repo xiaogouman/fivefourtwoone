@@ -2,7 +2,7 @@
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:template match="/warehouses">
 	<html>
-	  <h1>query-2(b)</h1>
+	  <h1>query-b</h1>
 	  <body>
 	  <ul>
 		<xsl:for-each select="warehouse">
