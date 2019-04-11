@@ -41,15 +41,13 @@ where c.C_NAME = 'Customer#000000001';
 s.execute(query1)
 
 query2="""
-select s.S_NATION, s.S_REGION, c.C_MKTSEGMENT, sum(f.LO_EXTENDEDPRICE) from FACT_LINEORDER f
-inner join DIM_PART p
-on f.LO_PARTKEY = p.P_PARTKEY
-inner join DIM_SUPPLIER s
-on f.LO_SUPPKEY = s.S_SUPPKEY
-inner join DIM_CUSTOMER c
-on f.LO_CUSTKEY = c.C_CUSTKEY
-where p.P_BRAND = 'Brand#13'
-group by s.S_NATION, s.S_REGION, c.C_MKTSEGMENT;
+select s.S_NATION, s.S_REGION, c.C_MKTSEGMENT, sum(f.LO_EXTENDEDPRICE) 
+from FACT_LINEORDER f, DIM_PART p, DIM_SUPPLIER s, DIM_CUSTOMER c
+where f.LO_PARTKEY = p.P_PARTKEY
+and f.LO_SUPPKEY = s.S_SUPPKEY
+and f.LO_CUSTKEY = c.C_CUSTKEY
+and p.P_BRAND = 'Brand#13'
+group by rollup(s.S_NATION, s.S_REGION, c.C_MKTSEGMENT);
 """
 
 s.execute(query2)
@@ -64,14 +62,14 @@ avg(f.LO_DISCOUNT) as avg_discount
 from FACT_LINEORDER f
 inner join DIM_DATE d
 on f.LO_ORDERDATE = d.d_date_actual
-group by d.d_year_actual, d.d_month_actual
-order by d.d_year_actual, d.d_month_actual asc
+group by rollup(d.d_year_actual, d.d_month_actual)
+order by d.d_year_actual, d.d_month_actual asc;
 """
 
 s.execute(query3)
 
 query4 = """
-select f.LO_ORDERPRIORITY, count(f.LO_ORDERPRIORITY)
+select f.LO_ORDERPRIORITY, count(distinct f.LO_ORDERKEY)
 from FACT_LINEORDER f
 where f.LO_RECEIPTDATE > f.LO_COMMITDATE
 group by f.LO_ORDERPRIORITY
