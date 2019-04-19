@@ -14,6 +14,11 @@ args = parser.parse_args()
 def sum_balance(sess):
     ## 1. Execute a query that sum the balance of all accounts.
     ## 2. Fetch the result and return it.
+    # balance_0 = float(list(sess.execute(" \
+    # SELECT balance from account \
+    # where id = 85471"))[0][0])
+    #
+    # print balance_0
     q = list(sess.execute("""
     SELECT sum(balance) from account 
     """))

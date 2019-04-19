@@ -15,7 +15,7 @@ args = parser.parse_args()
 def exchange(sess):
     # generate two random account number
     account_nums = random.sample(range(1, 100000), 2)
-    # print 'perform swap between '+str(account_nums[0])+'and'+str(account_nums[1])
+
     balance_0 = float(list(sess.execute(" \
     SELECT balance from account \
     where id = " + str(account_nums[0])))[0][0])
@@ -30,15 +30,6 @@ def exchange(sess):
     sess.execute(" UPDATE account set balance = " + str(balance_0) + " \
     where id = " + str(account_nums[1]))
 
-    # balance_0_new = float(list(sess.execute(" \
-    # SELECT balance from account \
-    # where id = " + str(account_nums[0])))[0][0])
-    #
-    # balance_1_new = float(list(sess.execute(" \
-    # SELECT balance from account \
-    # where id = " + str(account_nums[1])))[0][0])
-    # print balance_0_new, balance_1_new
-
 ## Create S sums operations
 def E_swaps(sess, E):
     start = time.time()
@@ -47,6 +38,7 @@ def E_swaps(sess, E):
         while True:
             try:
                 exchange(sess)
+                sess.commit()
                 time.sleep(0.0001)
             except Exception as e:
                 # print e
